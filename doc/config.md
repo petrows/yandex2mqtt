@@ -9,7 +9,7 @@ mv config.orig.js config.js
 
 Доступные примеры:
 
-* В папке [examples](examples/).
+* В папке [examples](../examples/).
 * В моей кнфигурации умного дома: [yandex2mqtt.devices.js](https://github.com/petrows/smarthome-openhab/blob/master/yandex2mqtt.devices.js), там вы можете найти полный пример интеграции, включая адаптацию на стороне системы УД (openHAB).
 
 ## Файл конфигурации
