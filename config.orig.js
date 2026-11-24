@@ -6,6 +6,12 @@ module.exports = {
         password: 'password',
     },
 
+    // Servers: at least one of `http` / `https`, both are possible.
+    // http: plain HTTP, only behind a reverse proxy with TLS (Yandex needs HTTPS)
+    // http: {
+    //     port: 4001,
+    // },
+
     https: {
         privateKey: '/etc/letsencrypt/live/your.domain.ru/privkey.pem',
         certificate: '/etc/letsencrypt/live/your.domain.ru/fullchain.pem',

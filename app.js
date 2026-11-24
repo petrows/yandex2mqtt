@@ -96,6 +96,20 @@ if (cli.dump) {
     return 0
 }
 
+/* At least one server: http (behind a TLS reverse proxy) and / or https */
+if (!config.http && !config.https) {
+    logger.error("Config: neither 'http' nor 'https' block is set, nothing to listen on");
+    process.exit(1);
+}
+if (config.http && !config.http.port) {
+    logger.error("Config: 'http.port' is not set");
+    process.exit(1);
+}
+if (config.https && !(config.https.port && config.https.privateKey && config.https.certificate)) {
+    logger.error("Config: 'https' block needs 'port', 'privateKey' and 'certificate'");
+    process.exit(1);
+}
+
 const fs = require('fs');
 const path = require('path');
 
@@ -103,6 +117,7 @@ const path = require('path');
 const ejs = require('ejs');
 const express = require('express');
 const app = express();
+const http = require('http');
 const https = require('https');
 /* parsers */
 const cookieParser = require('cookie-parser');
@@ -175,15 +190,21 @@ if (!telegram.enabled) {
     logger.info('Telegram: not configured, /alice messages are dropped');
 }
 
-/* create https server */
-const privateKey = fs.readFileSync(config.https.privateKey, 'utf8');
-const certificate = fs.readFileSync(config.https.certificate, 'utf8');
-const credentials = {
-    key: privateKey,
-    cert: certificate,
-};
-const httpsServer = https.createServer(credentials, app);
-httpsServer.listen(config.https.port);
+/* create http / https servers (at least one, checked above) */
+if (config.http) {
+    http.createServer(app).listen(config.http.port, () => {
+        logger.info(`HTTP: listening on port ${config.http.port}`);
+    });
+}
+if (config.https) {
+    const credentials = {
+        key: fs.readFileSync(config.https.privateKey, 'utf8'),
+        cert: fs.readFileSync(config.https.certificate, 'utf8'),
+    };
+    https.createServer(credentials, app).listen(config.https.port, () => {
+        logger.info(`HTTPS: listening on port ${config.https.port}`);
+    });
+}
 
 /* cache devices from config to global */
 global.devices = [];
