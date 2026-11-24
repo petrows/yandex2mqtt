@@ -72,7 +72,7 @@ module.exports.query = [
 
         global.logger.info(`Query ${reqId}: user ${req.user.id}`);
 
-        for (const d of (req.body.devices || [])) {
+        for (const d of ((req.body && req.body.devices) || [])) {
             const ldevice = findUserDevice(d.id, req.user);
             if (!ldevice) {
                 global.logger.error(`Query ${reqId}: device ${d.id} not found (rescan device list?)`);
@@ -106,7 +106,7 @@ module.exports.action = [
         debug('action :: recv: %O', req.body);
         global.logger.info(`Action ${reqId}: user ${req.user.id}`);
 
-        for (const payloadDevice of req.body.payload.devices) {
+        for (const payloadDevice of ((req.body && req.body.payload && req.body.payload.devices) || [])) {
             const {id} = payloadDevice;
 
             const capabilities = [];

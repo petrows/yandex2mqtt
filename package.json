@@ -13,33 +13,34 @@
       "url": "https://github.com/lasthead0"
     }
   ],
+  "engines": {
+    "node": ">=26"
+  },
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@poziworld/oauth2orize": "^1.11.1",
-    "body-parser": "^1.17.1",
     "connect-ensure-login": "^0.1.1",
-    "cookie-parser": "^1.4.5",
-    "ejs": "^3.1.6",
-    "errorhandler": "^1.5.0",
-    "express": "^4.15.2",
-    "express-session": "^1.17.1",
-    "https": "^1.0.0",
-    "lokijs": "^1.5.11",
-    "mqtt": "^4.2.6",
-    "mqtt-packet": "^6.9.0",
-    "oauth2orize": "^1.8.0",
-    "passport": "^0.4.1",
+    "cookie-parser": "^1.4.7",
+    "debug": "^4.4.3",
+    "ejs": "^7.0.2",
+    "errorhandler": "^1.5.2",
+    "express": "^5.3.0",
+    "express-session": "^1.19.0",
+    "lokijs": "^1.5.12",
+    "mqtt": "^5.16.1",
+    "passport": "^0.7.0",
     "passport-http": "^0.3.0",
     "passport-http-bearer": "^1.0.1",
     "passport-local": "^1.0.0",
     "passport-oauth2-client-password": "^0.1.2",
-    "winston": "^3.3.3"
+    "winston": "^3.19.0"
   },
   "devDependencies": {
-    "eslint": "^7.21.0",
-    "eslint-config-airbnb-base": "^14.2.1",
-    "eslint-plugin-import": "^2.22.1"
+    "@eslint/js": "^10.0.0",
+    "eslint": "^10.15.0",
+    "globals": "^17.0.0"
   }
 }

@@ -13,7 +13,7 @@ function convertToYandexValue(val, actType) {
             try {
                 const value = parseFloat(val);
                 return isNaN(value) ? 0.0 : value;
-            } catch(e) {
+            } catch {
                 logger.log('error', {message: `Can't parse to float: ${val}`});
                 return 0.0;
             }
@@ -252,7 +252,7 @@ class Device {
             const cps = [].concat(capabilities, properties).filter(cp => (cp.state.instance === instance));
             if (cps == undefined) throw new Error(`Can't instance '${instance}' in device '${id}'`);
 
-            cps.forEach((cp) => {
+            cps.forEach(cp => {
                 debug('updateState: %O', cp)
 
                 const actType = String(cp.type).split('.')[2];

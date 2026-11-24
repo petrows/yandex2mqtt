@@ -247,7 +247,7 @@ global.mqttClient = mqtt.connect(`mqtt://${config.mqtt.host}`, {
     const subscriptionTriggered = subscriptions.filter(sub => topic.toLowerCase() === sub.topic.toLowerCase());
     if (subscriptionTriggered == undefined) return;
 
-    subscriptionTriggered.forEach((subscription) => {
+    subscriptionTriggered.forEach(subscription => {
         debug("Subscription: %o", subscription);
 
         const { deviceId, instance } = subscription;
@@ -258,7 +258,7 @@ global.mqttClient = mqtt.connect(`mqtt://${config.mqtt.host}`, {
         Promise.all(config.notification.map(el => {
             let { skill_id, oauth_token, user_id } = el;
 
-            return new Promise((resolve, reject) => {
+            return new Promise(resolve => {
                 let req = https.request({
                     hostname: 'dialogs.yandex.net',
                     port: 443,
