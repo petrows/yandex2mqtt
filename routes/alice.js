@@ -46,8 +46,10 @@ function getDevice(body, opts) {
     const client = meta.client_id || '';
     let name = id && opts.devices[id];
     if (!name) {
-        // Smart speakers: ru.yandex.quasar..., the Yandex apps: ru.yandex.searchplugin, ...
-        if (/quasar/i.test(client)) name = opts.deviceSpeaker;
+        // Smart speakers: aliced/1.0 (Yandex <model>; Linux ...) (seen on a
+        // Yandex Station), ru.yandex.quasar... (older firmware); the Yandex
+        // apps: ru.yandex.searchplugin, ...
+        if (/^aliced\/|quasar/i.test(client)) name = opts.deviceSpeaker;
         else if (client) name = opts.deviceApp;
         else name = id;
     }

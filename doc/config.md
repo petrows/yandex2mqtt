@@ -486,9 +486,40 @@ hooks: {
 ```
 
 Ответ OpenClaw `200` означает, что запрос принят: агент работает и
-доставляет ответ сам, мост его не ждёт. По документации OpenClaw содержимое
-вебхука для агента - внешний (недоверенный) ввод, а не сообщение участника
-чата.
+доставляет ответ сам, мост его не ждёт.
+
+#### Без пометки «внешний недоверенный ввод»
+
+Прямой `/hooks/agent` всегда оборачивает сообщение для агента в блок
+`SECURITY NOTICE: The following content is from an EXTERNAL, UNTRUSTED
+source...`. Отключить это можно только для маппинга (`hooks.mappings`,
+`allowUnsafeExternalContent`) - отдельного пути вебхука, поля запроса
+подставляются шаблонами:
+
+```json5
+hooks: {
+    // ... как выше
+    mappings: [{
+        id: 'alice',
+        match: {path: 'alice'},          // POST /hooks/alice
+        action: 'agent',
+        agentId: 'main',
+        name: '{{payload.name}}',
+        messageTemplate: '{{payload.message}}',
+        sessionKey: '{{payload.sessionKey}}', // проверяется allowedSessionKeyPrefixes
+        sessionMode: 'persistent',
+        channel: 'telegram',
+        to: '{{payload.to}}',
+        deliver: true,
+        allowUnsafeExternalContent: true,
+    }],
+},
+```
+
+В мосте тогда `url: 'https://openclaw.example.com/hooks/alice'`, остальные
+поля те же (`agentId`, `channel`, `deliver` задаёт маппинг). Пометка
+защищает агента от инструкций в чужом тексте (письма, сайты); здесь текст -
+фраза самого пользователя, сказанная Алисе после связки аккаунтов.
 
 ### Блок alice (опционально)
 
@@ -523,7 +554,7 @@ alice: {
 сообщения:
 
 ```
-Alice: message from user 1, device 'колонка' (application_id 1A2B..., client ru.yandex.quasar.app/...): купить хлеба
+Alice: message from user 1, device 'колонка' (application_id 1A2B..., client aliced/1.0 (Yandex cucumber; Linux 1.0)): купить хлеба
 ```
 
 Скажите фразу на каждой колонке и перенесите id в `alice.devices` с понятным
@@ -539,9 +570,9 @@ Alice: message from user 1, device 'колонка' (application_id 1A2B..., cli
 - **Backend**: Endpoint URL `https://your.domain.ru:port/alice`
 - **Тип доступа**: Приватный
 - **Связка аккаунтов**:
-    - Идентификатор / секрет приложения: из блока `clients`. Лучше отдельный
-      клиент (свой `id`), не тот же, что у навыка УД - токены хранятся по паре
-      пользователь + клиент.
+    - Идентификатор / секрет приложения: из блока `clients`, можно тот же, что
+      у навыка УД - каждая привязка получает свой токен и не заменяет токены
+      других навыков (до 20 последних токенов на пользователя и клиента).
     - URL авторизации: `https://your.domain.ru:port/dialog/authorize`
     - URL для получения / обновления токена: `https://your.domain.ru:port/oauth/token`
 

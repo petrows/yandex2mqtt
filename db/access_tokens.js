@@ -16,40 +16,44 @@ global.dbl = new loki(cli.db, {
     }
 });
 
+// Tokens kept per user + client: every linking (account linking of a skill)
+// issues its own token and they don't replace each other - one OAuth client
+// is often shared by several skills (smart home + dialog), each keeps using
+// its token. Tokens don't expire; unlink removes its token (routes/user.js),
+// the oldest ones above this limit are dropped (relinking again and again).
+const MAX_TOKENS_PER_CLIENT = 20;
+
 module.exports.find = (key, done) => {
     const ltoken = global.authl.findOne({'token': key});
     if (ltoken) {
         const {userId, clientId} = ltoken;
         return done(null, {userId, clientId})
-    } else {
-        logger.log('error', new Error('Token Not Found'));
-        return done();
     }
+    // Unknown token: never linked here, or replaced / removed (unlink)
+    logger.warn('Token not found (unknown or removed token: relink the skill in the Yandex app)');
+    return done();
 };
 
+/* Any token of the user and client (auto-approve of a known client) */
 module.exports.findByUserIdAndClientId = (userId, clientId, done) => {
-    // One token per user and client: a user linked to several skills
-    // (smart home + dialog) with different clients keeps all of them
     const ltoken = global.authl.findOne({userId, clientId});
     if (ltoken) {
         logger.log('info', {message: `Load token by userId (${userId}), clientId (${clientId}): found`});
         return done(null, ltoken.token);
     }
-    logger.log('error', new Error(`Token Not Found: userId (${userId}), clientId (${clientId})`));
+    logger.log('info', {message: `No token of userId (${userId}), clientId (${clientId}) yet`});
     return done();
 };
 
 module.exports.save = (token, userId, clientId, done) => {
-    logger.log('info', {message: `Start saving token`});
-    const ltoken = global.authl.findOne({userId, clientId});
-    if (ltoken) {
-        logger.log('info', {message: `Token of user ${userId}, client ${clientId} updated`});
-        global.authl.update(Object.assign({}, ltoken, {token, userId, clientId}));
-    } else {
-        logger.log('info', {message: `New token of user ${userId}, client ${clientId}`});
-        global.authl.insert({'type': 'token', token, userId, clientId});
+    global.authl.insert({'type': 'token', token, userId, clientId});
+    const tokens = global.authl.chain()
+        .find({userId, clientId})
+        .simplesort('$loki', true)
+        .data();
+    for (const old of tokens.slice(MAX_TOKENS_PER_CLIENT)) {
+        global.authl.remove(old);
     }
+    logger.log('info', {message: `New token of user ${userId}, client ${clientId} (${Math.min(tokens.length, MAX_TOKENS_PER_CLIENT)} tokens)`});
     done();
 };
-
-/* works */
