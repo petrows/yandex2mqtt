@@ -55,8 +55,15 @@ class Device {
             properties: (options.properties || []).map(p => Object.assign({}, p, {state: (p.state == undefined) ? this.initState(p) : p.state})),
         };
         this.meta = {
-            allowedUsers: options.allowedUsers || ['1'],
+            // Not set: no access separation, the device is available to every user
+            allowedUsers: options.allowedUsers,
         };
+    }
+
+    /* Device is available to the y2m user (allowedUsers not set: to everyone) */
+    isAllowed(userId) {
+        const {allowedUsers} = this.meta;
+        return !Array.isArray(allowedUsers) || allowedUsers.indexOf(userId) > -1;
     }
 
     /*  Create init state (for capabilities and properties) on device object create */
@@ -223,13 +230,16 @@ class Device {
 
         logger.info(`Command ${id}: instance ${instance}, topic ${topic}, command ${val}, message ${message}`)
 
+        // Unknown capability / no set topic: report the error to Yandex
+        const action_result = topic
+            ? {'status': 'DONE'}
+            : {'status': 'ERROR', 'error_code': 'INVALID_ACTION', 'error_message': `Can't set '${instance}'`};
+
         return {
             type,
             'state': {
                 instance,
-                'action_result': {
-                    'status': 'DONE'
-                }
+                action_result,
             }
         }
     }

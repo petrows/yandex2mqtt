@@ -14,6 +14,16 @@ module.exports.info = [
     }
 ];
 
+/* Device of the y2m user (allowedUsers), undefined if unknown / not allowed */
+function findUserDevice(id, user) {
+    return global.devices.find(d => d.data.id == id && d.isAllowed(user.id));
+}
+
+/* HEAD /v1.0: endpoint availability check, sent without a token */
+module.exports.heartbeat = (req, res) => {
+    res.status(200).end();
+};
+
 module.exports.ping = [
     passport.authenticate('bearer', {session: true}),
     (req, res) => {
@@ -37,7 +47,7 @@ module.exports.devices = [
                 }
             };
 
-            for (const d of global.devices.filter(d => Array.isArray(d.meta.allowedUsers) && d.meta.allowedUsers.indexOf(userId) > -1)) {
+            for (const d of global.devices.filter(d => d.isAllowed(userId))) {
                 r.payload.devices.push(d.getInfo());
             };
 
@@ -60,8 +70,19 @@ module.exports.query = [
             }
         };
 
-        for (const d of req.body.devices) {
-            const ldevice = global.devices.find(device => device.data.id == d.id);
+        global.logger.info(`Query ${reqId}: user ${req.user.id}`);
+
+        for (const d of (req.body.devices || [])) {
+            const ldevice = findUserDevice(d.id, req.user);
+            if (!ldevice) {
+                global.logger.error(`Query ${reqId}: device ${d.id} not found (rescan device list?)`);
+                r.payload.devices.push({
+                    id: d.id,
+                    error_code: 'DEVICE_NOT_FOUND',
+                    error_message: 'Device not found',
+                });
+                continue;
+            }
             r.payload.devices.push(ldevice.getState());
         };
 
@@ -83,15 +104,24 @@ module.exports.action = [
         };
 
         debug('action :: recv: %O', req.body);
+        global.logger.info(`Action ${reqId}: user ${req.user.id}`);
 
         for (const payloadDevice of req.body.payload.devices) {
             const {id} = payloadDevice;
 
             const capabilities = [];
-            const ldevice = global.devices.find(device => device.data.id == id);
+            const ldevice = findUserDevice(id, req.user);
 
             if (!ldevice) {
-                logger.error(`Device ${id} not found (rescan device list?)`);
+                global.logger.error(`Action ${reqId}: device ${id} not found (rescan device list?)`);
+                r.payload.devices.push({
+                    id,
+                    action_result: {
+                        status: 'ERROR',
+                        error_code: 'DEVICE_NOT_FOUND',
+                        error_message: 'Device not found',
+                    },
+                });
                 continue;
             }
 
@@ -118,6 +148,13 @@ module.exports.unlink = [
         const r = {
             request_id: reqId,
         }
+
+        // Yandex revokes the token anyway: forget it, the next linking
+        // issues a new one
+        const authToken = (req.get('Authorization') || '').split(' ')[1];
+        const ltoken = authToken && global.authl.findOne({'token': authToken});
+        if (ltoken) global.authl.remove(ltoken);
+        global.logger.info(`Unlink ${reqId}: user ${req.user.id}, token removed: ${Boolean(ltoken)}`);
 
         res.status(200).send(r);
     }

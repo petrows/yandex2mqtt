@@ -155,6 +155,10 @@ app.post('/dialog/authorize/decision', r_oauth2.decision);
 app.post('/oauth/token', r_oauth2.token);
 app.get('/api/userinfo', r_user.info);
 app.get('/api/clientinfo', r_client.info);
+// Endpoint availability check by Yandex (periodic HEAD, no token): must be
+// registered before the GET routes (express answers HEAD with them, they
+// require the bearer token -> 401)
+app.head(['/provider/v1.0', '/provider'], r_user.heartbeat);
 app.get('/provider/v1.0', r_user.ping);
 app.get('/provider', r_user.ping);
 app.get('/provider/v1.0/user/devices', r_user.devices);
