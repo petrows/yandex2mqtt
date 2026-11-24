@@ -429,9 +429,66 @@ telegram: {
 },
 ```
 
-Бот не видит сообщения других ботов: если сообщения должен обработать другой
-бот, отправляйте их в чат, где он читает сообщения от ботов (личка с ним не
-подойдёт), или вызывайте его логику напрямую.
+Боты Telegram не видят сообщения других ботов (ни в личке, ни в группах):
+если фразу должен обработать другой бот (AI-агент), передавайте её ему
+напрямую - для OpenClaw см. блок `openclaw` ниже.
+
+### Блок openclaw (опционально): AI-агент
+
+Бот Telegram не видит сообщения других ботов (ограничение Telegram, не
+настраивается), поэтому AI-бот в том же чате сообщение моста не получит.
+Для AI-агента [OpenClaw](https://docs.openclaw.ai) мост передаёт фразу
+напрямую, через его вебхук `POST /hooks/agent`
+([документация](https://docs.openclaw.ai/automation/cron-jobs/webhooks)).
+
+С `sessionKey` сессии группового чата агент обрабатывает фразу в этой
+сессии (с историей чата) и отвечает в чат: в чате видны фраза (бот моста,
+блок `telegram`) и ответ агента. Мост отправляет сначала в Telegram, потом
+в OpenClaw.
+
+```js
+openclaw: {
+    targets: [
+        {
+            url: 'https://openclaw.example.com/hooks/agent',  // обязательно
+            token: process.env.Y2M_OPENCLAW_TOKEN,            // hooks.token OpenClaw, обязательно
+            // tlsVerify: false,              // не проверять сертификат HTTPS (свой CA,
+                                              // самоподписанный); по умолчанию проверяется
+            agentId: 'main',                                  // агент, опционально
+            // Сессия, в которую передать фразу (sessionMode: persistent),
+            // опционально; ключи: `openclaw sessions --all-agents`
+            sessionKey: 'agent:main:telegram:group:-1001234567890',
+            channel: 'telegram',              // куда доставить ответ агента
+            to: '-1001234567890',
+            // template: '%s',                // текст для агента: %s - фраза, %d - устройство
+            // name: 'Алиса (%d)',            // подпись запроса в OpenClaw (по умолчанию)
+            // deliver: true,                 // доставлять ответ (по умолчанию)
+            // extra: {model: '...'},         // другие поля /hooks/agent
+            // users: ['1'],                  // фильтры, как в telegram
+            // devices: ['Кухня'],
+        },
+    ],
+},
+```
+
+Настройка OpenClaw (`openclaw.json`):
+
+```json5
+hooks: {
+    enabled: true,
+    token: '<отдельный длинный токен, не gateway.auth.token>',
+    path: '/hooks',
+    allowedAgentIds: ['main'],
+    // Для sessionKey:
+    allowRequestSessionKey: true,
+    allowedSessionKeyPrefixes: ['agent:main:telegram:group:'],
+},
+```
+
+Ответ OpenClaw `200` означает, что запрос принят: агент работает и
+доставляет ответ сам, мост его не ждёт. По документации OpenClaw содержимое
+вебхука для агента - внешний (недоверенный) ввод, а не сообщение участника
+чата.
 
 ### Блок alice (опционально)
 

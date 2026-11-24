@@ -2,7 +2,8 @@
 
 /*
  * Alice dialog skill ("Навык в Алисе") webhook: forwards the user's phrase to
- * Telegram chats (config `telegram`).
+ * Telegram chats (config `telegram`) and OpenClaw agents (config `openclaw`),
+ * see messages.js.
  *
  * The skill uses account linking with the OAuth server of this app
  * (/dialog/authorize, /oauth/token): the y2m user is found by the access
@@ -27,7 +28,7 @@ const DEFAULTS = {
     replyLogin: 'Чтобы отправлять сообщения, войдите в аккаунт: откройте навык в приложении Яндекс.',
     // Optional phrase transform before sending: text => text (empty: nothing to send)
     transform: null,
-    // Wait for Telegram that long before answering "sending" (Alice waits ~3s)
+    // Wait for the targets that long before answering "sending" (Alice waits ~3s)
     sendWaitMs: 2000,
     // Device names: session.application.application_id -> name (e.g. room),
     // used as %d in the Telegram templates. The ids are logged per message.
@@ -87,7 +88,7 @@ function findUser(token) {
     return found;
 }
 
-module.exports = (config, telegram) => {
+module.exports = (config, messages) => {
     const opts = Object.assign({}, DEFAULTS, config.alice || {});
     const pending = new Map();
 
@@ -106,11 +107,11 @@ module.exports = (config, telegram) => {
         return text;
     }
 
-    // Send and answer with the result if Telegram is fast enough, else
+    // Send and answer with the result if the targets are fast enough, else
     // answer "sending" (the message is still sent in the background)
     async function sendAndReply(body, text, user, device) {
         global.logger.info(`Alice: message from user ${user.id}, device '${device.name}' (application_id ${device.id}, client ${device.client}): ${text}`);
-        const sending = telegram.send(text, user.id, device);
+        const sending = messages.send(text, user.id, device);
         const timeout = new Promise(resolve => setTimeout(() => resolve(null), opts.sendWaitMs));
         const sent = await Promise.race([sending, timeout]);
         if (sent === null) return reply(body, opts.replySending, true);

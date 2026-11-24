@@ -181,13 +181,13 @@ app.post('/provider/v1.0/user/devices/query', r_user.query);
 app.post('/provider/v1.0/user/devices/action', r_user.action);
 app.post('/provider/v1.0/user/unlink', r_user.unlink);
 
-/* Alice dialog skill -> Telegram */
-const Telegram = require('./telegram');
-const telegram = new Telegram(config.telegram);
-const r_alice = require('./routes/alice')(config, telegram);
+/* Alice dialog skill -> Telegram / OpenClaw */
+const Messages = require('./messages');
+const messages = new Messages(config);
+const r_alice = require('./routes/alice')(config, messages);
 app.post('/alice', r_alice.webhook);
-if (!telegram.enabled) {
-    logger.info('Telegram: not configured, /alice messages are dropped');
+if (!messages.enabled) {
+    logger.info('Alice: neither telegram nor openclaw targets configured, /alice messages are dropped');
 }
 
 /* create http / https servers (at least one, checked above) */

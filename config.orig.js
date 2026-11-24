@@ -56,6 +56,22 @@ module.exports = {
         ],
     },
 
+    // Alice dialog skill -> OpenClaw agent (webhook), optional, see doc/config.md
+    // openclaw: {
+    //     targets: [
+    //         {
+    //             url: 'https://openclaw.example.com/hooks/agent',
+    //             token: process.env.Y2M_OPENCLAW_TOKEN,
+    //             // Internal CA / self-signed certificate: skip the TLS check
+    //             tlsVerify: false,
+    //             agentId: 'main',
+    //             sessionKey: 'agent:main:telegram:group:-1001234567890',
+    //             channel: 'telegram',
+    //             to: '-1001234567890',
+    //         },
+    //     ],
+    // },
+
     alice: {
         // skillIds: ['<skill id of the dialog skill>'],
         // Device names (%d in templates): application_id (see the log) -> name
