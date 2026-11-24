@@ -233,6 +233,10 @@ global.devices.forEach(device => {
     });
 });
 
+/* Device state notifications to Yandex */
+const Notifier = require('./notify');
+const notifier = new Notifier(config.notification);
+
 /* Create MQTT client (variable) in global */
 global.mqttClient = mqtt.connect(`mqtt://${config.mqtt.host}`, {
     port: config.mqtt.port,
@@ -243,9 +247,8 @@ global.mqttClient = mqtt.connect(`mqtt://${config.mqtt.host}`, {
     logger.info("MQTT: connected");
 }).on('offline', () => { /* on offline event handler */
     logger.info("MQTT: disconnected");
-}).on('message', (topic, message) => { /* on get message event handler */
+}).on('message', (topic, message, packet) => { /* on get message event handler */
     const subscriptionTriggered = subscriptions.filter(sub => topic.toLowerCase() === sub.topic.toLowerCase());
-    if (subscriptionTriggered == undefined) return;
 
     subscriptionTriggered.forEach(subscription => {
         debug("Subscription: %o", subscription);
@@ -254,51 +257,13 @@ global.mqttClient = mqtt.connect(`mqtt://${config.mqtt.host}`, {
         const ldevice = global.devices.find(d => d.data.id == deviceId);
         ldevice.updateState(`${message}`, instance);
 
-        /* Make Request to Yandex Dialog notification API */
-        Promise.all(config.notification.map(el => {
-            let { skill_id, oauth_token, user_id } = el;
-
-            return new Promise(resolve => {
-                let req = https.request({
-                    hostname: 'dialogs.yandex.net',
-                    port: 443,
-                    path: `/api/v1/skills/${skill_id}/callback/state`,
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': `application/json`,
-                        'Authorization': `OAuth ${oauth_token}`
-                    }
-                }, res => {
-                    res.on('data', d => {
-                        global.logger.debug(d);
-                    });
-                });
-
-                req.on('error', error => {
-                    global.logger.error(error);
-                });
-
-                let { id, capabilities, properties } = ldevice.getState();
-                let resp = {
-                    "ts": Math.floor(Date.now() / 1000),
-                    "payload": {
-                        "user_id": `${user_id}`,
-                        "devices": [{
-                            id,
-                            capabilities: capabilities.filter(c => c.state.instance == instance),
-                            properties: properties.filter(p => p.state.instance == instance)
-                        }],
-                    }
-                };
-                debug("Message :: resp : %O", resp);
-                req.write(JSON.stringify(resp));
-
-                req.end();
-
-                resolve(true);
-            });
-        }));
-    })
+        /* Notify Yandex about the change, but not about the retained
+         * states sent by the broker on (re)subscribe: not a change, and a
+         * burst of the whole house on every start */
+        if (!packet.retain) {
+            notifier.changed(ldevice, instance);
+        }
+    });
 });
 
 module.exports = app;
