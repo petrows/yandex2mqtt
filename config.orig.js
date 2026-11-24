@@ -37,6 +37,22 @@ module.exports = {
         },
     ],
 
+    // Alice dialog skill -> Telegram (POST /alice), see doc/config.md
+    telegram: {
+        token: process.env.Y2M_TG_TOKEN,
+        targets: [
+            {
+                chatId: '-1001234567890',
+                template: '%s\n#alice',
+                // users: ['1'],
+            },
+        ],
+    },
+
+    alice: {
+        // skillIds: ['<skill id of the dialog skill>'],
+    },
+
     devices: [
         // Please configure with '--devices ./data/devices.js', see 'config.devices.orig.js'
     ],
