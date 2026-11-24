@@ -14,7 +14,7 @@ class Telegram {
      * @param {Object} config `telegram` block of the config:
      *   token:   bot token (required to send anything)
      *   apiUrl:  Bot API URL, default https://api.telegram.org
-     *   targets: [{chatId, threadId, template, silent, users}]
+     *   targets: [{chatId, threadId, template, silent, users, devices}]
      */
     constructor(config) {
         this.config = config || {};
@@ -31,34 +31,40 @@ class Telegram {
     }
 
     /**
-     * Targets allowed for the y2m user (`users` not set: every user).
+     * Targets of the y2m user and the device: `users` (y2m user ids) and
+     * `devices` (device names or application_ids) not set: any.
      */
-    targetsFor(userId) {
-        return this.targets.filter(t => !Array.isArray(t.users) || t.users.indexOf(userId) > -1);
+    targetsFor(userId, device) {
+        const dev = device || {};
+        return this.targets.filter(t =>
+            (!Array.isArray(t.users) || t.users.indexOf(userId) > -1)
+            && (!Array.isArray(t.devices) || t.devices.indexOf(dev.name) > -1 || t.devices.indexOf(dev.id) > -1));
     }
 
     /**
-     * Message for the target: its `template` with every `%s` replaced by
-     * the text (default '%s': the text as is).
+     * Message for the target: its `template` with `%s` replaced by the text
+     * and `%d` by the device name (default '%s': the text as is).
      */
-    static format(target, text) {
+    static format(target, text, device) {
         const template = target.template === undefined ? '%s' : String(target.template);
-        // split/join: no special `$` patterns of String.replace
-        return template.split('%s').join(text);
+        const name = (device && device.name) || '';
+        // One pass, function replacement: no substitution inside the text,
+        // no special `$` patterns
+        return template.replace(/%[sd]/g, m => (m === '%s' ? text : name));
     }
 
     /**
      * Send `text` (formatted by the target template) to every target of the user. Never throws:
      * errors are logged, the result is the number of delivered messages.
      */
-    async send(text, userId) {
-        const targets = this.targetsFor(userId);
+    async send(text, userId, device) {
+        const targets = this.targetsFor(userId, device);
         if (!this.config.token || targets.length === 0) {
-            global.logger.error(`Telegram: no targets for user ${userId}, message dropped`);
+            global.logger.error(`Telegram: no targets for user ${userId}, device '${(device && device.name) || ''}', message dropped`);
             return 0;
         }
 
-        const results = await Promise.all(targets.map(t => this.sendOne(t, Telegram.format(t, text))));
+        const results = await Promise.all(targets.map(t => this.sendOne(t, Telegram.format(t, text, device))));
         return results.filter(Boolean).length;
     }
 

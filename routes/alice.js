@@ -29,10 +29,32 @@ const DEFAULTS = {
     transform: null,
     // Wait for Telegram that long before answering "sending" (Alice waits ~3s)
     sendWaitMs: 2000,
+    // Device names: session.application.application_id -> name (e.g. room),
+    // used as %d in the Telegram templates. The ids are logged per message.
+    devices: {},
+    // Name of a device not in `devices`, by the client type (meta.client_id)
+    deviceSpeaker: 'колонка',
+    deviceApp: 'приложение',
 };
 
+/* Device the request came from: {id: application_id, name, client} */
+function getDevice(body, opts) {
+    const session = body.session || {};
+    const meta = body.meta || {};
+    const id = (session.application && session.application.application_id) || '';
+    const client = meta.client_id || '';
+    let name = id && opts.devices[id];
+    if (!name) {
+        // Smart speakers: ru.yandex.quasar..., the Yandex apps: ru.yandex.searchplugin, ...
+        if (/quasar/i.test(client)) name = opts.deviceSpeaker;
+        else if (client) name = opts.deviceApp;
+        else name = id;
+    }
+    return {id, name, client};
+}
+
 // Phrase said before account linking, sent once linking completes
-// (Yandex doesn't repeat it): application_id -> {text, ts}
+// (Yandex doesn't repeat it): application_id -> {text, device, ts}
 const PENDING_TTL_MS = 10 * 60 * 1000;
 
 function reply(body, text, endSession) {
@@ -86,9 +108,9 @@ module.exports = (config, telegram) => {
 
     // Send and answer with the result if Telegram is fast enough, else
     // answer "sending" (the message is still sent in the background)
-    async function sendAndReply(body, text, user) {
-        global.logger.info(`Alice: message from user ${user.id}: ${text}`);
-        const sending = telegram.send(text, user.id);
+    async function sendAndReply(body, text, user, device) {
+        global.logger.info(`Alice: message from user ${user.id}, device '${device.name}' (application_id ${device.id}, client ${device.client}): ${text}`);
+        const sending = telegram.send(text, user.id, device);
         const timeout = new Promise(resolve => setTimeout(() => resolve(null), opts.sendWaitMs));
         const sent = await Promise.race([sending, timeout]);
         if (sent === null) return reply(body, opts.replySending, true);
@@ -116,7 +138,7 @@ module.exports = (config, telegram) => {
             if (appId) pending.delete(appId);
             if (!user) return reply(body, opts.replyLogin, true);
             global.logger.info(`Alice: account linked, user ${user.id}`);
-            if (saved) return sendAndReply(body, saved.text, user);
+            if (saved) return sendAndReply(body, saved.text, user, saved.device);
             return reply(body, opts.replyAsk, false);
         }
 
@@ -129,7 +151,7 @@ module.exports = (config, telegram) => {
             if (interfaces.account_linking === undefined) return reply(body, opts.replyLogin, true);
             if (appId && text) {
                 cleanPending();
-                pending.set(appId, {text, ts: Date.now()});
+                pending.set(appId, {text, device: getDevice(body, opts), ts: Date.now()});
             }
             debug('start account linking, app %s', appId);
             // No `response` with start_account_linking (make-skill docs)
@@ -142,7 +164,7 @@ module.exports = (config, telegram) => {
         // "Алиса, запусти навык ..." without a phrase: ask, keep the session
         if (!text) return reply(body, opts.replyAsk, false);
 
-        return sendAndReply(body, text, user);
+        return sendAndReply(body, text, user, getDevice(body, opts));
     }
 
     return {

@@ -49,14 +49,19 @@ module.exports = {
         targets: [
             {
                 chatId: '-1001234567890',
-                template: '%s\n#alice',
+                template: '%s\n#alice #%d',
                 // users: ['1'],
+                // devices: ['Кухня'],
             },
         ],
     },
 
     alice: {
         // skillIds: ['<skill id of the dialog skill>'],
+        // Device names (%d in templates): application_id (see the log) -> name
+        // devices: {
+        //     '<application_id>': 'Кухня',
+        // },
     },
 
     devices: [
